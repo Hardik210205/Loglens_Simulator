@@ -86,7 +86,7 @@ public class LogGeneratorService
             ServiceName = service,
             LogLevel = level,
             Message = message,
-            Timestamp = DateTime.UtcNow
+            Timestamp = DateTime.Now
         };
     }
 

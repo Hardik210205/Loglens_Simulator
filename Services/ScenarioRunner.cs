@@ -64,7 +64,7 @@ public class ScenarioRunner
                 ServiceName = "PaymentService",
                 LogLevel = "Error",
                 Message = $"Invalid payment amount {_logGenerator.GenerateLog().Message} for customer CUST-{i:D5}",
-                Timestamp = DateTime.UtcNow
+                Timestamp = DateTime.Now
             };
             logs.Add(log);
         }

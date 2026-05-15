@@ -6,9 +6,24 @@ namespace LogLens.Simulator.Config;
 public class SimulatorSettings
 {
     public string LogLensApiUrl { get; set; } = "http://localhost:5000";
+    public string? LogLensApiKey { get; set; }
     public string LogsEndpoint { get; set; } = "/api/logs";
     public int LogsPerSecond { get; set; } = 5;
     public int RequestTimeoutSeconds { get; set; } = 10;
     
-    public string FullApiUrl => $"{LogLensApiUrl}{LogsEndpoint}";
+    public string FullApiUrl
+    {
+        get
+        {
+            var baseUrl = LogLensApiUrl.TrimEnd('/');
+            var endpoint = LogsEndpoint.TrimStart('/');
+
+            if (baseUrl.EndsWith("/api/logs", StringComparison.OrdinalIgnoreCase))
+            {
+                return baseUrl;
+            }
+
+            return $"{baseUrl}/{endpoint}";
+        }
+    }
 }

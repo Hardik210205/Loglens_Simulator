@@ -2,6 +2,7 @@ using LogLens.Simulator.Config;
 using LogLens.Simulator.Models;
 using System.Text;
 using System.Text.Json;
+using System.Net.Http;
 
 namespace LogLens.Simulator.Services;
 
@@ -25,6 +26,11 @@ public class ApiClient
         {
             Timeout = TimeSpan.FromSeconds(settings.RequestTimeoutSeconds)
         };
+
+        if (!string.IsNullOrWhiteSpace(settings.LogLensApiKey))
+        {
+            _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("X-Api-Key", settings.LogLensApiKey);
+        }
     }
 
     /// <summary>
@@ -34,7 +40,31 @@ public class ApiClient
     {
         try
         {
-            var json = JsonSerializer.Serialize(log);
+            if (string.IsNullOrWhiteSpace(_settings.LogLensApiKey))
+            {
+                Interlocked.Increment(ref _logsFailed);
+                Console.WriteLine("❌ Missing LogLens API key. Set LOGLENS_API_KEY before running the simulator.");
+                return false;
+            }
+
+            // Backend persistence expects UTC timestamps.
+            // Convert all outbound timestamps to UTC to avoid timestamptz write failures.
+            var normalizedTimestamp = log.Timestamp.Kind switch
+            {
+                DateTimeKind.Utc => log.Timestamp,
+                DateTimeKind.Local => log.Timestamp.ToUniversalTime(),
+                _ => DateTime.SpecifyKind(log.Timestamp, DateTimeKind.Utc)
+            };
+
+            var outboundLog = new LogEntry
+            {
+                ServiceName = log.ServiceName,
+                LogLevel = log.LogLevel,
+                Message = log.Message,
+                Timestamp = normalizedTimestamp
+            };
+
+            var json = JsonSerializer.Serialize(outboundLog);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync(_settings.FullApiUrl, content);
@@ -47,7 +77,12 @@ public class ApiClient
             else
             {
                 Interlocked.Increment(ref _logsFailed);
-                Console.WriteLine($"❌ API Error: {response.StatusCode}");
+                var responseBody = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ API Error: {(int)response.StatusCode} {response.ReasonPhrase}");
+                if (!string.IsNullOrWhiteSpace(responseBody))
+                {
+                    Console.WriteLine($"   ↳ {responseBody}");
+                }
                 return false;
             }
         }

@@ -44,7 +44,7 @@ public class LogEntry
     public string ServiceName { get; set; }      // e.g., "PaymentService"
     public string LogLevel { get; set; }         // "Info", "Warning", "Error"
     public string Message { get; set; }          // Log message content
-    public DateTime Timestamp { get; set; }      // UTC timestamp
+  public DateTime Timestamp { get; set; }      // Local timestamp
 }
 ```
 
@@ -122,9 +122,12 @@ RequestTimeoutSeconds = 10
 
 Override defaults via environment:
 ```powershell
-$env:LOGLENS_API_URL = "http://your-server:5000"
+$env:LOGLENS_URL = "https://loglens-backend-cvs3.onrender.com"
+$env:LOGLENS_API_KEY = "ll_da5a88189eaa4003b49a76ab9518b242c3b5bd798e30457087134f398d814937"
 $env:LOGS_PER_SECOND = "10"
 ```
+
+`LOGLENS_API_URL` is still supported for backward compatibility.
 
 ---
 
@@ -262,7 +265,7 @@ dotnet run
 
 ### **Change LogLens URL**
 ```bash
-$env:LOGLENS_API_URL = "http://192.168.1.100:5000"
+$env:LOGLENS_URL = "http://192.168.1.100:5000"
 dotnet run
 ```
 
@@ -280,7 +283,7 @@ Edit [ScenarioRunner.cs](Services/ScenarioRunner.cs):
 ```
 → Verify LogLens is running on http://localhost:5000
 → Check firewall settings
-→ Verify LOGLENS_API_URL environment variable
+→ Verify LOGLENS_URL environment variable
 ```
 
 ### **⚠️ High failure rate**

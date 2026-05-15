@@ -1,13 +1,17 @@
 using LogLens.Simulator.Config;
 using LogLens.Simulator.Services;
+using System.Text;
 
-Console.OutputEncoding = System.Text.Encoding.UTF8;
+Console.OutputEncoding = Encoding.UTF8;
+
+var localSettings = LoadLocalEnvironmentValues();
 
 // Initialize settings
 var settings = new SimulatorSettings
 {
-    LogLensApiUrl = Environment.GetEnvironmentVariable("LOGLENS_API_URL") ?? "http://localhost:5000",
-    LogsPerSecond = int.TryParse(Environment.GetEnvironmentVariable("LOGS_PER_SECOND"), out var lps) ? lps : 5
+    LogLensApiUrl = GetSetting("LOGLENS_URL", localSettings, "LOGLENS_API_URL") ?? "http://localhost:5000",
+    LogLensApiKey = GetSetting("LOGLENS_API_KEY", localSettings),
+    LogsPerSecond = int.TryParse(GetSetting("LOGS_PER_SECOND", localSettings), out var lps) ? lps : 5
 };
 
 Console.WriteLine("═══════════════════════════════════════════════════════");
@@ -139,4 +143,65 @@ async Task RunCustomScenario(LogGeneratorService logGenerator, ApiClient apiClie
     }
 
     Console.WriteLine($"\n✅ Custom scenario complete!");
+}
+
+static Dictionary<string, string> LoadLocalEnvironmentValues()
+{
+    var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    var envFilePath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+
+    if (!File.Exists(envFilePath))
+    {
+        return values;
+    }
+
+    foreach (var rawLine in File.ReadAllLines(envFilePath, Encoding.UTF8))
+    {
+        var line = rawLine.Trim();
+
+        if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#'))
+        {
+            continue;
+        }
+
+        if (line.StartsWith("export ", StringComparison.OrdinalIgnoreCase))
+        {
+            line = line[7..].Trim();
+        }
+
+        var separatorIndex = line.IndexOf('=');
+        if (separatorIndex <= 0)
+        {
+            continue;
+        }
+
+        var key = line[..separatorIndex].Trim();
+        var value = line[(separatorIndex + 1)..].Trim().Trim('"');
+
+        if (!string.IsNullOrWhiteSpace(key))
+        {
+            values[key] = value;
+        }
+    }
+
+    return values;
+}
+
+static string? GetSetting(string name, Dictionary<string, string> localSettings, params string[] aliases)
+{
+    foreach (var candidateName in new[] { name }.Concat(aliases))
+    {
+        var environmentValue = Environment.GetEnvironmentVariable(candidateName);
+        if (!string.IsNullOrWhiteSpace(environmentValue))
+        {
+            return environmentValue;
+        }
+
+        if (localSettings.TryGetValue(candidateName, out var localValue) && !string.IsNullOrWhiteSpace(localValue))
+        {
+            return localValue;
+        }
+    }
+
+    return null;
 }
